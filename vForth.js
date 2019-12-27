@@ -76,9 +76,7 @@ constructor() {
 adddict(name,v) {
 	for(let i=0;i<this.reserve.length;i++) if(this.reserve[i]==name) return false 
 	if(Array.isArray(v)) {
-		const cc = this.compile(v) 
-		if(!cc) return false 
-		this.dict[name] = {name:name,c:cc} 
+		this.dict[name] = {name:name,c:v} 
 	} else if(typeof v == "function") {
 		this.dict[name] = {name:name,f:v}
 	}
