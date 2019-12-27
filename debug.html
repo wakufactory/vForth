@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width">
+<title></title>
+<script type="text/javascript" src=""></script>
+<script type="module">
+import * as VF from "./vForth.js" 
+onload =function() {
+	const v = new VF.vForth()
+	console.log(v.reserve)
+	
+	const cs = [] 
+	document.getElementById("cl").addEventListener("change", (ev)=>{
+		console.log(ev.target.value )
+		let vv = ev.target.value.split(" ")
+		let vs = [] 
+		for(let i=0;i<vv.length;i++) {
+			let val = vv[i]
+			if( val=="") continue 
+			try {
+				val = eval(val)
+			}catch(e){
+				 val = vv[i].trim() 
+			}
+			vs.push( val )
+		}
+		console.log(vs)
+		let c 
+		if( c = v.compile(vs) ) {
+			console.log(c) 
+			try {
+				v.run(c)
+			}catch (e) {
+				console.log(e)
+				document.getElementById("msg").innerHTML = e.msg 
+				return 
+			}
+			document.getElementById("msg").innerHTML = "" 
+			dumpstack(v.dumpstack())
+			ev.target.value=""
+		} else {
+			document.getElementById("msg").innerHTML = v.emsg
+		}
+	})
+}
+function dumpstack(s) {
+	document.getElementById("st").innerHTML =
+		s.reverse().reduce((a,c)=>{
+			let v 
+			switch(c.type) {
+				case "v":
+					v = "["+c.value+"]"
+					break
+				case "m":
+					v = "["+c.value.reduce((a,v)=>a+"["+v.join()+"]","")+"]"
+					break
+				case "n":
+					v = c.value 
+					break 
+				case "b":
+					v = "<"+c.value+">" 
+					break 
+				case "s":
+					v = "'"+c.value+"'"
+					break
+			}
+			return a +v+"\n" 
+		},"")
+}
+</script>
+<link rel="stylesheet" type="text/css" href="">
+<style type="text/css">
+textarea {
+	font-family: monospace ;
+	font-size:1rem ;
+}
+</style>
+</head>
+<body>
+<div>
+<input type=text size=100 id=cl><br/>
+</div>
+<div id=msg style="height:3rem;">
+</div>
+<div style="display:flex">
+	<div id=stack>
+		<textarea id=st cols=40 rows=30>stack</textarea>
+	</div>
+</div>
+</body>
+</html>
