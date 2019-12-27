@@ -117,8 +117,18 @@ function setDict(vf) {
 		}
 		else throw new RuntimeException("type dont match")	
 	})
-
-
+	vf.adddict("MAX",()=>{
+		const a1 = vf.dstack.pop() 
+		const a2 = vf.dstack.pop()
+		if(a1.type=="n" && a2.type=="n") vf.dstack.push( a2.value>a1.value?a2.value:a1.value )			
+		else throw new RuntimeException("type dont match")	
+	})
+	vf.adddict("MIN",()=>{
+		const a1 = vf.dstack.pop() 
+		const a2 = vf.dstack.pop()
+		if(a1.type=="n" && a2.type=="n") vf.dstack.push( a2.value<a1.value?a2.value:a1.value )			
+		else throw new RuntimeException("type dont match")	
+	})
 //conditional
 	vf.adddict("<",()=>{
 		const a1 = vf.dstack.pop() 
@@ -260,6 +270,16 @@ function setDict(vf) {
 		if(a1.type!="n") throw new RuntimeException("type dont match")	
 		vf.dstack.push(Math.tan(a1.value))
 	})
+	vf.adddict("ASIN",()=>{
+		const a1 = vf.dstack.pop()
+		if(a1.type!="n") throw new RuntimeException("type dont match")	
+		vf.dstack.push(Math.asin(a1.value))
+	})
+	vf.adddict("ACOS",()=>{
+		const a1 = vf.dstack.pop()
+		if(a1.type!="n") throw new RuntimeException("type dont match")	
+		vf.dstack.push(Math.acos(a1.value))
+	})
 	vf.adddict("ATAN2",()=>{
 		const a1 = vf.dstack.pop() 
 		const a2 = vf.dstack.pop()
@@ -303,8 +323,17 @@ function setDict(vf) {
 		const a1 = vf.dstack.pop() 
 		const a2 = vf.dstack.pop()
 		if(a1.type=="v" && a2.type=="v") {
-			let v = [] 
-			vf.dstack.push(v,"v")
+			let v 
+			if(a1.value.length==2) {
+				v = a2.value[0]*a1.value[1] - a2.value[1]*a1.value[0]
+				vf.dstack.push(v)
+			}
+			if(a1.value.length==3) {
+				v = [a2.value[1]*a1.value[2] - a2.value[2] * a1.value[1],
+				a2.value[2]*a1.value[0] - a2.value[0] * a1.value[2],
+				a2.value[0]*a1.value[1] - a2.value[1] * a1.value[0]] 
+				vf.dstack.push(v,"v")
+			}
 		}
 		else throw new RuntimeException("type dont match")	
 	})
