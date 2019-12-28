@@ -17,7 +17,7 @@ onload =function() {
 	document.getElementById("cl").addEventListener("change", (ev)=>{
 		console.log(ev.target.value )
 
-		if( c = compile(v,ev.target.value ) ) {
+		if( c = v.compile(ev.target.value ) ) {
 			console.log(c) 
 			try {
 				console.log(run.call(c))
@@ -29,39 +29,24 @@ onload =function() {
 			document.getElementById("msg").innerHTML = "" 
 			dumpstack(run.dumpstack())
 			ev.target.value=""
+		}else {
+			document.getElementById("msg").innerHTML = v.emsg
 		}
 	})
 	document.getElementById("def").addEventListener("click", (ev)=>{
 		const name = document.getElementById("dname").value 
 		const code =  document.getElementById("dcode").value.replace(/\n/g," ")
-		if(c = compile(v,code)) {
+		if(c = v.compile(code)) {
 			v.adddict(name,c) 
 			document.getElementById("msg").innerHTML = "define "+name 
-		} 
-	})
-}
-function compile(v,str) {
-		let vv = str.split(" ")
-		let vs = [] 
-		for(let i=0;i<vv.length;i++) {
-			let val = vv[i]
-			if( val=="") continue 
-			try {
-				val = eval(val)
-			}catch(e){
-				 val = vv[i].trim() 
-			}
-			vs.push( val )
-		}
-		console.log(vs)
-		let c 
-		if( c = v.compile(vs) ) {
-			return c 
-		} else {
+		}  else {
 			document.getElementById("msg").innerHTML = v.emsg
 		}	
+	})
 }
+
 function dumpstack(s) {
+	console.log(s)
 	document.getElementById("st").innerHTML =
 		s.reverse().reduce((a,c)=>{
 			let v 

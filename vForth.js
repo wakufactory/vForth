@@ -20,14 +20,14 @@ class vStack {
 	top() {
 		if(this.stack.length==0 ) return null 
 		const v = this.stack[this.stack.length-1]
-		if(v.type=="n"||v.type=="b") return v  
+		if(v.type=="n"||v.type=="b"||v.type=="s") return v  
 		if(v.type=="v") return {type:v.type,value:v.value.slice(0)}
 		if(v.type=="m") return {type:v.type,
 			value: v.value.map((v)=>v.slice(0)) }
 	}
 	push( v ,type="n") {
 		if(this.stack.length>this.maxstacksize) throw new RuntimeException("stack overflow")
-		if(type=="n"||type=="b") this.stack.push({type:type,value:v}) 
+		if(type=="n"||type=="b"||type=="s") this.stack.push({type:type,value:v}) 
 		if(type=="v") this.stack.push( {type:type,value:v.slice(0)})
 		if(type=="m") this.stack.push( {type:type,
 			value: v.map((v)=>v.slice(0))
@@ -118,6 +118,9 @@ pushstack(v) {
 }
 dumpstack() {
 	return this.dstack.dumpstack() 
+}
+clearstack(){
+	this.dstack.clear()
 }
 } // class vRun
 class RuntimeException {
@@ -213,6 +216,7 @@ out(data) {
 }
 compile(code) {
 	this.emsg = "" 
+	if(typeof code == "string") code = this.parseStr(code)
 	const ret = [] 
 	for(let i=0;i<code.length;i++) {
 		let op = code[i]
@@ -282,6 +286,25 @@ compile(code) {
 		}
 	}
 	return ret 
+}
+parseStr(str) {
+	let vv = str.split(" ")
+	let vs = [] 
+	for(let i=0;i<vv.length;i++) {
+		let val = vv[i].trim()
+		if( val=="") continue 
+		if(val.toString().match(/^'(.*)'$/)) {
+			val = vv[i]
+		} else {
+			try {
+				val = eval(val)
+			}catch(e){
+				 val = vv[i].trim() 
+			}
+		}
+		vs.push( val )
+	}
+	return vs 
 }
 newRuntime() {
 	return new vRun
