@@ -1,5 +1,10 @@
 // vForth standard dictionary
 
+class RuntimeException {
+	constructor(msg) {
+		this.msg = msg 
+	}
+}
 export default 
 function setDict(vf) {
 //stack manupilation
@@ -30,6 +35,7 @@ function setDict(vf) {
 		const a1 = ds.pop() 
 		const a2 = ds.pop()
 		if(a1.type=="n" && a2.type=="n") ds.push( a2.value + m*a1.value )		
+		else if(a1.type=="s" && a2.type=="s") ds.push( a2.value + a1.value,"s" )			
 		else if(a2.type=="v" && a1.type=="v") {	//vector + vector 
 			for(let i=0;i<a2.value.length;i++) {
 				a2.value[i] += m*a1.value[i]
@@ -67,6 +73,7 @@ function setDict(vf) {
 			ds.push(a2.value,"v")
 		}
 		else if(a2.type=="m" && a1.type=="v") {	//matrix x vector
+			if(a2.value.length==4 && a1.value.length==3) a1.value.push(1)
 			if(a2.value[0].length!=a1.value.length) throw new RuntimeException("type dont match")
 			let v =[] 
 			const m = a2.value 
@@ -79,6 +86,8 @@ function setDict(vf) {
 		}
 		else if(a2.type=="m" && a1.type=="m") {	//matrix x matrix
 			if(a2.value[0].length!=a1.value[0].length) throw new RuntimeException("type dont match")
+			if(a2.value.length==4) ds.push( mmult4(a2.value,a1.value),"m") 
+			else throw new RuntimeException("type dont match")
 		}
 		else throw new RuntimeException("type dont match")
 	})
@@ -133,19 +142,22 @@ function setDict(vf) {
 	vf.adddict("<",(ds)=>{
 		const a1 = ds.pop() 
 		const a2 = ds.pop()
-		if(a1.type=="n" && a2.type=="n") ds.push( a2.value < a1.value,"b" )			
+		if(a1.type=="n" && a2.type=="n") ds.push( a2.value < a1.value,"b" )		
+		else if(a1.type=="s" && a2.type=="s") ds.push( a2.value < a1.value,"b" )			
 		else throw new RuntimeException("type dont match")	
 	})
 	vf.adddict(">",(ds)=>{
 		const a1 = ds.pop() 
 		const a2 = ds.pop()
-		if(a1.type=="n" && a2.type=="n") ds.push( a2.value > a1.value,"b" )			
+		if(a1.type=="n" && a2.type=="n") ds.push( a2.value > a1.value,"b" )		
+		else if(a1.type=="s" && a2.type=="s") ds.push( a2.value > a1.value,"b" )			
 		else throw new RuntimeException("type dont match")	
 	})
 	vf.adddict("==",(ds)=>{
 		const a1 = ds.pop() 
 		const a2 = ds.pop()
 		if(a1.type=="n" && a2.type=="n") ds.push( a2.value == a1.value,"b" )
+		else if(a1.type=="s" && a2.type=="s") ds.push( a2.value == a1.value,"b" )
 		else if(a1.type=="v" && a2.type=="v") {
 			let f = true 
 			for(let i=0;i<a2.value.length;i++) {
@@ -159,6 +171,7 @@ function setDict(vf) {
 		const a1 = ds.pop() 
 		const a2 = ds.pop()
 		if(a1.type=="n" && a2.type=="n") ds.push( a2.value != a1.value,"b" )
+		else if(a1.type=="s" && a2.type=="s") ds.push( a2.value != a1.value,"b" )
 		else if(a1.type=="v" && a2.type=="v") {
 			let f = false 
 			for(let i=0;i<a2.value.length;i++) {
@@ -171,6 +184,7 @@ function setDict(vf) {
 	vf.adddict("==0",(ds)=>{
 		const a1 = ds.pop()
 		if(a1.type=="n" ) ds.push( a1.value==0,"b" )
+		else if(a1.type=="s" ) ds.push( a1.value=='',"b" )
 		else if(a1.type=="v") {
 			let f = true 
 			for(let i=0;i<a1.value.length;i++) {
@@ -183,6 +197,7 @@ function setDict(vf) {
 	vf.adddict("!=0",(ds)=>{
 		const a1 = ds.pop()
 		if(a1.type=="n" ) ds.push( a1.value!=0,"b" )
+		else if(a1.type=="s" ) ds.push( a1.value!='',"b" )
 		else if(a1.type=="v") {
 			let f = false
 			for(let i=0;i<a1.value.length;i++) {
@@ -195,7 +210,7 @@ function setDict(vf) {
 	vf.adddict("!",(ds)=>{
 		const a1 = ds.pop() 
 		if(a1.type!="b") throw new RuntimeException("type dont match")
-		ds.push(!a1,"b")
+		ds.push(!a1.value,"b")
 	})
 	vf.adddict("&&",(ds)=>{
 		const a1 = ds.pop() 
@@ -233,6 +248,11 @@ function setDict(vf) {
 		const a1 = ds.pop()
 		if(a1.type!="n") throw new RuntimeException("type dont match")	
 		ds.push(Math.floor(a1.value))
+	})
+	vf.adddict("FRACT",(ds)=>{
+		const a1 = ds.pop()
+		if(a1.type!="n") throw new RuntimeException("type dont match")	
+		ds.push(a1.value-Math.floor(a1.value))
 	})
 	vf.adddict("POW",(ds)=>{
 		const a1 = ds.pop() 
@@ -296,6 +316,22 @@ function setDict(vf) {
 		if(a1.type!="n") throw new RuntimeException("type dont match")	
 		ds.push(a1.value*Math.PI/180)
 	})
+	vf.adddict("RAND",(ds)=>{
+		ds.push(Math.random())
+	})
+	vf.adddict("IRAND",(ds)=>{
+		const a1 = ds.pop()
+		if(a1.type!="n") throw new RuntimeException("type dont match")
+		ds.push(Math.floor(Math.random()*a1.value))	
+	})
+	vf.adddict("V2RAND",(ds)=>{
+		const a1 = ds.pop()
+		if(a1.type!="v"||a1.value.length!=2) throw new RuntimeException("type dont match")
+		const r = Math.sin(a1.value[0]*12.9898+a1.value[1]*78.233)
+                 * 43758.5453123
+		ds.push(r - Math.floor(r)) 
+	})
+
 //vector manupilation	
 	vf.adddict("NORM",(ds)=>{
 		const a1 = ds.pop()
@@ -353,6 +389,10 @@ function setDict(vf) {
 	vf.adddict("V4",(ds)=>{
 		const a1 = ds.pop() 
 		const a2 = ds.pop()
+		if(a2.type=="v" && a2.value.length==3 && a1.type=="n") {
+			ds.push([a2.value[0],a2.value[1],a2.value[2],a1.value],"v")
+			return 
+		}
 		const a3 = ds.pop()
 		const a4 = ds.pop()
 		if(a1.type=="n" && a2.type=="n" && a3.type=="n" && a4.type=="n") ds.push([a4.value,a3.value,a2.value,a1.value],"v")		
@@ -425,7 +465,6 @@ function setDict(vf) {
 	vf.alias("B*","Z*")
 	vf.alias("A*","W*")
 
-
 	vf.adddict(".X",(ds)=>{
 		const t = ds.top() 
 		if(t.type!="v") throw new RuntimeException("type dont match")
@@ -475,6 +514,9 @@ function setDict(vf) {
 	vf.alias(".RGB",".XYZ")
 	vf.alias(".RGBA",".XYZW")
 
+	vf.adddict("ZVEC2",(ds)=>ds.push([0,0],"v"))
+	vf.adddict("ZVEC3",(ds)=>ds.push([0,0,0],"v"))
+	vf.adddict("ZVEC4",(ds)=>ds.push([0,0,0,0],"v"))
 	vf.adddict("IMAT2",(ds)=>{
 		ds.push([[1,0],[0,1]],"m")	
 	})
@@ -489,5 +531,91 @@ function setDict(vf) {
 		const t = ds.top() 
 		if(t.type!="m" || n.type!="n") throw new RuntimeException("type dont match")
 		ds.push(t.value[n.value],"v")
-	})	
+	})
+//transform matrix
+	vf.adddict("TRANSL",(ds)=>{	//(v3 -- m4)
+		const v = ds.pop() 
+		if(v.type!="v" || v.value.length!=3) throw new RuntimeException("type dont match")
+		ds.push([[1,0,0,0],[0,1,0,0],[0,0,1,0],[v.value[0],v.value[1],v.value[2],1]],"m")
+	})
+	vf.adddict("SCALE",(ds)=>{//(v3 -- m4)
+		const v = ds.pop() 
+		if(v.type!="v" || v.value.length!=3) throw new RuntimeException("type dont match")
+		ds.push([[v.value[0],0,0,0],[0,v.value[1],0,0],[0,0,v.value[2],0],[0,0,0,1]],"m")		
+	})
+	vf.adddict("ROTX",(ds)=>{	//(n -- m4)
+		const n = ds.pop() 
+		if(n.type!="n") throw new RuntimeException("type dont match")
+		const ang = n.value / 2
+		const sinA = Math.sin(ang)
+		const cosA = Math.cos(ang)
+		const sinA2 = sinA * sinA
+		const rm = [[1,0,0,0],[0,1-2*sinA2,2*sinA*cosA,0],[0,-2*sinA*cosA,1-2*sinA2,0],[0,0,0,1]]
+		ds.push( rm,"m")
+	})
+	vf.adddict("ROTY",(ds)=>{	//(n -- m4)
+		const n = ds.pop() 
+		if(n.type!="n") throw new RuntimeException("type dont match")
+		const ang = n.value / 2
+		const sinA = Math.sin(ang)
+		const cosA = Math.cos(ang)
+		const sinA2 = sinA * sinA
+		const rm = [[1-2*sinA2,0,-2*sinA*cosA,0],[0,1,0,0],[2*sinA*cosA,0,1-2*sinA2,0],[0,0,0,1]]
+		ds.push( rm,"m")
+	})
+	vf.adddict("ROTZ",(ds)=>{	//(n -- m4)
+		const n = ds.pop() 
+		if(n.type!="n") throw new RuntimeException("type dont match")
+		const ang = n.value / 2
+		const sinA = Math.sin(ang)
+		const cosA = Math.cos(ang)
+		const sinA2 = sinA * sinA
+		const rm = [[1-2*sinA2,2*sinA*cosA,0,0],[-2*sinA*cosA,1-2*sinA2,0,0],[0,0,1,0],[0,0,0,1]]
+		ds.push( rm,"m")
+	})
+	vf.adddict("Q2M",(ds)=>{//(v4 -- m4)
+		const v = ds.pop()
+		if(v.type!="v" || v.value.length!=4) throw new RuntimeException("type dont match")
+		const x = v.value[0],y=v.value[1],z=v.value[2],w=v.value[3]
+		const x2 = x*x, y2=y*y, z2=z*z
+		ds.push([[1- 2*(y2 + z2) ,2*(x*y + w*z),2*(x*z - w*y),0],
+		[2*(x*y - w*z) ,1-2*(x2 + z2),2*(y*z + w*x),0],
+		[2*(x*z + w*y) , 2*(y*z - w*x) , 1-2*(x2 + y2),0],[0,0,0,1]],"m")
+	})
+
+
+//string
+	vf.adddict("TOSTR",(ds)=>{
+		const s = ds.pop() 
+		ds.push(s.value.toString(),"s")
+	})
+	vf.adddict("TONUM",(ds)=>{
+		const s = ds.pop() 
+		ds.push(parseFloat(s.value),"n")
+	})
+	vf.adddict("STRLEN",(ds)=>{
+		const s = ds.pop() 
+		if(s.type!="s") throw new RuntimeException("type dont match")
+		ds.push(s.value.length,"n")
+	})
+}
+function mmult4(m1,m2) {
+	return [ 
+	[ m1[0][0]*m2[0][0]+m1[0][1]*m2[1][0]+m1[0][2]*m2[2][0]+m1[0][3]*m2[3][0],
+		m1[0][0]*m2[0][1]+m1[0][1]*m2[1][1]+m1[0][2]*m2[2][1]+m1[0][3]*m2[3][1],
+		m1[0][0]*m2[0][2]+m1[0][1]*m2[1][2]+m1[0][2]*m2[2][2]+m1[0][3]*m2[3][2],
+		m1[0][0]*m2[0][3]+m1[0][1]*m2[1][3]+m1[0][2]*m2[2][3]+m1[0][3]*m2[3][3] ],
+	[ m1[1][0]*m2[0][0]+m1[1][1]*m2[1][0]+m1[1][2]*m2[2][0]+m1[1][3]*m2[3][0],
+		m1[1][0]*m2[0][1]+m1[1][1]*m2[1][1]+m1[1][2]*m2[2][1]+m1[1][3]*m2[3][1],
+		m1[1][0]*m2[0][2]+m1[1][1]*m2[1][2]+m1[1][2]*m2[2][2]+m1[1][3]*m2[3][2],
+		m1[1][0]*m2[0][3]+m1[1][1]*m2[1][3]+m1[1][2]*m2[2][3]+m1[1][3]*m2[3][3] ],	
+	[ m1[2][0]*m2[0][0]+m1[2][1]*m2[1][0]+m1[2][2]*m2[2][0]+m1[2][3]*m2[3][0],
+		m1[2][0]*m2[0][1]+m1[2][1]*m2[1][1]+m1[2][2]*m2[2][1]+m1[2][3]*m2[3][1],
+		m1[2][0]*m2[0][2]+m1[2][1]*m2[1][2]+m1[2][2]*m2[2][2]+m1[2][3]*m2[3][2],
+		m1[2][0]*m2[0][3]+m1[2][1]*m2[1][3]+m1[2][2]*m2[2][3]+m1[2][3]*m2[3][3] ],
+	[ m1[3][0]*m2[0][0]+m1[3][1]*m2[1][0]+m1[3][2]*m2[2][0]+m1[3][3]*m2[3][0],
+		m1[3][0]*m2[0][1]+m1[3][1]*m2[1][1]+m1[3][2]*m2[2][1]+m1[3][3]*m2[3][1],
+		m1[3][0]*m2[0][2]+m1[3][1]*m2[1][2]+m1[3][2]*m2[2][2]+m1[3][3]*m2[3][2],
+		m1[3][0]*m2[0][3]+m1[3][1]*m2[1][3]+m1[3][2]*m2[2][3]+m1[3][3]*m2[3][3] ]
+		]
 }
