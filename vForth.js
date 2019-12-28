@@ -3,11 +3,8 @@
 'use strict'
 import setDict from "./vForth_dic.js"
 
-class RuntimeException {
-	constructor(msg) {
-		this.msg = msg 
-	}
-}
+//-----------------------
+//typed stack class
 class vStack {
 	constructor() {
 		this.maxstacksize = 1000
@@ -15,6 +12,10 @@ class vStack {
 	}
 	clear(){
 		this.stack = []
+	}
+	get(n) {
+		if(this.stack.length-1-n <0) return null 
+		return this.stack[this.stack.length-1-n]
 	}
 	top() {
 		if(this.stack.length==0 ) return null 
@@ -62,7 +63,10 @@ class vStack {
 	dumpstack() {
 		return (this.stack.slice(0)) 
 	}
-}
+}// class vStack
+
+//-----------------------
+// runtime class
 class vRun {
 constructor() {
 	this.dstack = new vStack()	
@@ -73,8 +77,7 @@ run(code) {
 	for(;pc<code.length;pc++) {
 		let op = code[pc] 
 		if(op.op==null||op.op==undefined) throw new RuntimeException("no op") 
-		this.dump()
-		console.log("op:"+op.op.name)
+//		console.log("op:"+op.op.name)
 		//native code
 		if(op.op.f) {
 			ret = op.op.f(this.dstack,op.p)
@@ -82,7 +85,7 @@ run(code) {
 			if(ret!=undefined) pc += ret  
 			if(pc<0 || pc >code.length) {
 				throw new RuntimeException("jump over")
-				return false
+				return null
 			}
 			continue ;
 		}
@@ -92,51 +95,49 @@ run(code) {
 			continue 
 		}
 		throw new RuntimeException("invalid op")
-		return false 
+		return null 
 	}
-	return true 
+	return this.getstack() 
 }
-dump() {
-	const s = this.dstack.dumpstack()
-	console.log(
-		s.reduce((a,c)=>{
-			let v 
-			switch(c.type) {
-				case "v":
-					v = "["+c.value+"]"
-					break
-				case "m":
-					v = "["+c.value.reduce((a,v)=>a+"["+v.join()+"]","")+"]"
-					break
-				case "n":
-					v = c.value 
-					break 
-				case "b":
-					v = "<"+c.value+">" 
-					break 
-				case "s":
-					v = "'"+c.value+"'"
-					break
-			}
-			return a +v+"," 
-		},"stack:")
-	)
+call(code,...args) {
+	args.forEach((v)=>this.pushstack(v))
+	return this.run(code)
+}
+getstack(n=0) {
+	const s = this.dstack.get(n)
+	return (s!=null)?s:null 
+}
+pushstack(v) {
+		if((typeof v === 'number') && (isFinite(v)) ) this.dstack.push(v)
+		else if(v.toString().match(/^'(.*)'$/)) this.dstack.push(v,"s")
+		else if(Array.isArray(v)) {
+			if(Array.isArray(v[0])) this.dstack.push(v,"m")
+			else this.dstack.push(v,"v")
+		}
+		else if(v===true || v===false) this.dstack.push(v,"b")	
 }
 dumpstack() {
 	return this.dstack.dumpstack() 
 }
-
-
+} // class vRun
+class RuntimeException {
+	constructor(msg) {
+		this.msg = msg 
+	}
 }
-class vForth {
+
+//-----------------------
+// dictionary class 
+class vDictionary {
 constructor() {
-	this.dict = {} 
+	this.dict = {} 	
 	this.reserve = []
-	this.variables = {}
 	this.setreserve()
-	setDict(this)
 }
-
+get(name) {
+	if(this.dict[name]) return this.dict[name]
+	else return null 
+}
 adddict(name,v) {
 	for(let i=0;i<this.reserve.length;i++) if(this.reserve[i]==name) return false 
 	if(Array.isArray(v)) {
@@ -150,89 +151,6 @@ alias(alias,name) {
 	if(!this.dict[name]) return false 
 	this.dict[alias] = this.dict[name]
 }
-
-setVal(name,type,value) {
-	this.variables[name] = {type:type,value:value}	
-}
-getVal(name) {
-	if(this.variables[name]) return this.variables 
-	else return null 
-}
-out(data) {
-	console.log(data.value) 
-}
-compile(code) {
-	this.emsg = "" 
-	const ret = [] 
-	for(let i=0;i<code.length;i++) {
-		let op = code[i]
-		//numeric 
-		if((typeof op === 'number') && (isFinite(op)) ) {
-			ret.push({op:this.dict["$num"],p:op,src:op})
-			continue 
-		}
-		if(op.toString().match(/^'(.*)'$/)) {
-			ret.push({op:this.dict["$string"],p:RegExp.$1,src:op})
-			continue 			
-		}
-		if(Array.isArray(op)) {
-			if(Array.isArray(op[0])) ret.push({op:this.dict["$mat"],p:op,src:op})
-			else ret.push({op:this.dict["$vec"],p:op,src:op})
-			continue 
-		}
-		if(op===true || op===false) {
-			ret.push({op:this.dict["$bool"],p:op,src:op})
-			continue 			
-		}
-		//control
-		let o 
-		switch(op) {
-			case "IF":
-				o=1 
-				while(code[i+o]!="ELSE" && code[i+o]!="ENDIF") o++ 
-				ret.push({op:this.dict["$fbr"],p:o,src:op})
-				continue 
-				break 
-			case "ELSE":
-				o=1
-				while(code[i+o]!="ENDIF") o++
-				ret.push({op:this.dict["$br"],p:o,src:op}) 
-				continue 
-				break 
-			case "ENDIF":
-				ret.push({op:this.dict["NOP"],src:op})
-				continue 
-				break 
-			case "LOOP":
-				ret.push({op:this.dict["NOP"],src:op})
-				continue ;
-				break 
-			case "ENDLOOP":
-				o=1 
-				while(code[i-o]!="LOOP") o++ 
-				ret.push({op:this.dict["$br"],p:-o,src:op})
-				continue 
-				break  
-			case "EXITIF":
-				o=1 
-				while(code[i+o]!="ENDLOOP") o++ 
-				ret.push({op:this.dict["$tbr"],p:o+1,src:op})
-				continue 
-				break 			
-		}
-		//operation
-		if(this.dict[op]) {
-			ret.push({op:this.dict[op],src:op})
-			continue 
-		} else {
-			this.emsg = `compile error unkonwn op:${op} at ${i+1}`
-			console.log(this.emsg)
-			return null 
-		}
-	}
-	return ret 
-}
-
 setreserve() {
 //system
 	this.adddict("$num",(ds,n)=>{
@@ -270,6 +188,105 @@ setreserve() {
 	})
 	this.reserve = Object.keys(this.dict)
 }
+}// class vDictionary
+
+//-----------------------
+// main class 
+class vForth {
+constructor() {
+	this.dict = new vDictionary()
+	setDict(this.dict)
+	this.variables = {}
+}
+adddict(name,op) {
+	this.dict.adddict(name,op)
+}
+setVal(name,type,value) {
+	this.variables[name] = {type:type,value:value}	
+}
+getVal(name) {
+	if(this.variables[name]) return this.variables 
+	else return null 
+}
+out(data) {
+	console.log(data.value) 
+}
+compile(code) {
+	this.emsg = "" 
+	const ret = [] 
+	for(let i=0;i<code.length;i++) {
+		let op = code[i]
+		//numeric 
+		if((typeof op === 'number') && (isFinite(op)) ) {
+			ret.push({op:this.dict.get("$num"),p:op,src:op})
+			continue 
+		}
+		if(op.toString().match(/^'(.*)'$/)) {
+			ret.push({op:this.dict.get("$string"),p:RegExp.$1,src:op})
+			continue 			
+		}
+		if(Array.isArray(op)) {
+			if(Array.isArray(op[0])) ret.push({op:this.dict["$mat"],p:op,src:op})
+			else ret.push({op:this.dict.get("$vec"),p:op,src:op})
+			continue 
+		}
+		if(op===true || op===false) {
+			ret.push({op:this.dict.get("$bool"),p:op,src:op})
+			continue 			
+		}
+		//control
+		let o 
+		switch(op) {
+			case "IF":
+				o=1 
+				while(code[i+o]!="ELSE" && code[i+o]!="ENDIF") o++ 
+				ret.push({op:this.dict.get("$fbr"),p:o,src:op})
+				continue 
+				break 
+			case "ELSE":
+				o=1
+				while(code[i+o]!="ENDIF") o++
+				ret.push({op:this.dict.get("$br"),p:o,src:op}) 
+				continue 
+				break 
+			case "ENDIF":
+				ret.push({op:this.dict.get("NOP"),src:op})
+				continue 
+				break 
+			case "LOOP":
+				ret.push({op:this.dict.get("NOP"),src:op})
+				continue ;
+				break 
+			case "ENDLOOP":
+				o=1 
+				while(code[i-o]!="LOOP") o++ 
+				ret.push({op:this.dict.get("$br"),p:-o,src:op})
+				continue 
+				break  
+			case "EXITIF":
+				o=1 
+				while(code[i+o]!="ENDLOOP") o++ 
+				ret.push({op:this.dict.get("$tbr"),p:o+1,src:op})
+				continue 
+				break 			
+		}
+		//operation
+		let d 
+		if(d = this.dict.get(op)) {
+			ret.push({op:d,src:op})
+			continue 
+		} else {
+			this.emsg = `compile error unkonwn op:${op} at ${i+1}`
+			console.log(this.emsg)
+			return null 
+		}
+	}
+	return ret 
+}
+newRuntime() {
+	return new vRun
 }
 
-export {vForth,vRun,RuntimeException} 
+} // class vForth
+
+export {vForth,vRun,vDictionary,RuntimeException} 

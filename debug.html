@@ -9,8 +9,8 @@
 import * as VF from "./vForth.js" 
 onload =function() {
 	const v = new VF.vForth()
-	console.log(v.reserve)
-	const run = new VF.vRun()
+	console.log(v.dict.reserve)
+	const run = v.newRuntime()
 	
 	const cs = [] 
 	let c 
@@ -20,7 +20,7 @@ onload =function() {
 		if( c = compile(v,ev.target.value ) ) {
 			console.log(c) 
 			try {
-				run.run(c)
+				console.log(run.call(c))
 			}catch (e) {
 				console.log(e)
 				document.getElementById("msg").innerHTML = e.msg 
