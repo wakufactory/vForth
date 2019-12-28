@@ -10,6 +10,7 @@ import * as VF from "./vForth.js"
 onload =function() {
 	const v = new VF.vForth()
 	console.log(v.reserve)
+	const run = new VF.vRun()
 	
 	const cs = [] 
 	let c 
@@ -19,14 +20,14 @@ onload =function() {
 		if( c = compile(v,ev.target.value ) ) {
 			console.log(c) 
 			try {
-				v.run(c)
+				run.run(c)
 			}catch (e) {
 				console.log(e)
 				document.getElementById("msg").innerHTML = e.msg 
 				return 
 			}
 			document.getElementById("msg").innerHTML = "" 
-			dumpstack(v.dumpstack())
+			dumpstack(run.dumpstack())
 			ev.target.value=""
 		}
 	})

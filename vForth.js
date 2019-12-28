@@ -63,31 +63,38 @@ class vStack {
 		return (this.stack.slice(0)) 
 	}
 }
-class vForth {
+class vRun {
 constructor() {
-	this.dstack = new vStack()
-	this.dict = {} 
-	this.reserve = []
-	this.variables = {}
-	this.setreserve()
-	setDict(this)
+	this.dstack = new vStack()	
 }
+run(code) {
+	this.emsg = "" 
+	let pc = 0 ,ret 
+	for(;pc<code.length;pc++) {
+		let op = code[pc] 
+		if(op.op==null||op.op==undefined) throw new RuntimeException("no op") 
+		this.dump()
+		console.log("op:"+op.op.name)
+		//native code
+		if(op.op.f) {
+			ret = op.op.f(this.dstack,op.p)
 
-adddict(name,v) {
-	for(let i=0;i<this.reserve.length;i++) if(this.reserve[i]==name) return false 
-	if(Array.isArray(v)) {
-		this.dict[name] = {name:name,c:v} 
-	} else if(typeof v == "function") {
-		this.dict[name] = {name:name,f:v}
+			if(ret!=undefined) pc += ret  
+			if(pc<0 || pc >code.length) {
+				throw new RuntimeException("jump over")
+				return false
+			}
+			continue ;
+		}
+		//subroutine
+		if(op.op.c) {
+			this.run(op.op.c)
+			continue 
+		}
+		throw new RuntimeException("invalid op")
+		return false 
 	}
-	return true
-}
-alias(alias,name) {
-	if(!this.dict[name]) return false 
-	this.dict[alias] = this.dict[name]
-}
-dumpstack() {
-	return this.dstack.dumpstack() 
+	return true 
 }
 dump() {
 	const s = this.dstack.dumpstack()
@@ -115,9 +122,35 @@ dump() {
 		},"stack:")
 	)
 }
-out(data) {
-	console.log(data.value) 
+dumpstack() {
+	return this.dstack.dumpstack() 
 }
+
+
+}
+class vForth {
+constructor() {
+	this.dict = {} 
+	this.reserve = []
+	this.variables = {}
+	this.setreserve()
+	setDict(this)
+}
+
+adddict(name,v) {
+	for(let i=0;i<this.reserve.length;i++) if(this.reserve[i]==name) return false 
+	if(Array.isArray(v)) {
+		this.dict[name] = {name:name,c:v} 
+	} else if(typeof v == "function") {
+		this.dict[name] = {name:name,f:v}
+	}
+	return true
+}
+alias(alias,name) {
+	if(!this.dict[name]) return false 
+	this.dict[alias] = this.dict[name]
+}
+
 setVal(name,type,value) {
 	this.variables[name] = {type:type,value:value}	
 }
@@ -125,7 +158,9 @@ getVal(name) {
 	if(this.variables[name]) return this.variables 
 	else return null 
 }
-
+out(data) {
+	console.log(data.value) 
+}
 compile(code) {
 	this.emsg = "" 
 	const ret = [] 
@@ -197,72 +232,44 @@ compile(code) {
 	}
 	return ret 
 }
-run(code) {
-	this.emsg = "" 
-	let pc = 0 ,ret 
-	for(;pc<code.length;pc++) {
-		let op = code[pc] 
-		if(op.op==null||op.op==undefined) throw new RuntimeException("no op") 
-		this.dump()
-		console.log("op:"+op.op.name)
-		//native code
-		if(op.op.f) {
-			ret = op.op.f(op.p)
 
-			if(ret!=undefined) pc += ret  
-			if(pc<0 || pc >code.length) {
-				throw new RuntimeException("jump over")
-				return false
-			}
-			continue ;
-		}
-		//subroutine
-		if(op.op.c) {
-			this.run(op.op.c)
-			continue 
-		}
-		throw new RuntimeException("invalid op")
-		return false 
-	}
-	return true 
-}
 setreserve() {
 //system
-	this.adddict("$num",(n)=>{
-		this.dstack.push(n) 
+	this.adddict("$num",(ds,n)=>{
+		ds.push(n) 
 	})
-	this.adddict("$vec",(n)=>{
-		this.dstack.push(n,"v")
+	this.adddict("$vec",(ds,n)=>{
+		ds.push(n,"v")
 	})
-	this.adddict("$mat",(n)=>{
-		this.dstack.push(n,"m")
+	this.adddict("$mat",(ds,n)=>{
+		ds.push(n,"m")
 	})
-	this.adddict("$bool",(n)=>{
-		this.dstack.push(n,"b")
+	this.adddict("$bool",(ds,n)=>{
+		ds.push(n,"b")
 	})
-	this.adddict("$string",(n)=>{
-		this.dstack.push(n,"s")
+	this.adddict("$string",(ds,n)=>{
+		ds.push(n,"s")
 	})			
-	this.adddict("$fbr",(ofs)=>{
+	this.adddict("$fbr",(ds,ofs)=>{
 		let ret = 0 
-		const a1 = this.dstack.pop()
+		const a1 = ds.pop()
 		if(!a1.value) ret = ofs 
 		return ret 
 	})
-	this.adddict("$tbr",(ofs)=>{
+	this.adddict("$tbr",(ds,ofs)=>{
 		let ret = 0 
-		const a1 = this.dstack.pop()
+		const a1 = ds.pop()
 		if(a1.value) ret = ofs
 		return ret  
 	})
-	this.adddict("$br",(ofs)=>{
+	this.adddict("$br",(ds,ofs)=>{
 		return ofs 
 	})
-	this.adddict("NOP",()=>{
+	this.adddict("NOP",(ds)=>{
 		
 	})
 	this.reserve = Object.keys(this.dict)
 }
 }
 
-export {vForth,RuntimeException} 
+export {vForth,vRun,RuntimeException} 
