@@ -9,9 +9,15 @@
 import * as VF from "./vForth.js" 
 onload =function() {
 	const v = new VF.vForth()
-	console.log(v.dict.reserve)
-	const run = v.newRuntime()
+	const dict = v.dictionary.dict
+	document.getElementById("keys").innerHTML = Object.keys(dict).reduce((a,v)=>{
+		if(v.substr(0,1)!="$")
+			a.push(dict[v].name + (dict[v].desc? " : "+dict[v].desc:""))
+		return a
+	},[]).join("\n")
 	
+	const run = v.newRuntime()
+
 	const cs = [] 
 	let c 
 	document.getElementById("cl").addEventListener("change", (ev)=>{
@@ -39,6 +45,8 @@ onload =function() {
 		if(c = v.compile(code)) {
 			v.adddict(name,c) 
 			document.getElementById("msg").innerHTML = "define "+name 
+			document.getElementById("keys").innerHTML = v.getdictlist().join(" ")
+
 		}  else {
 			document.getElementById("msg").innerHTML = v.emsg
 		}	
@@ -82,16 +90,18 @@ textarea,input {
 <body>
 <div>
 CODE: <input type=text size=100 id=cl><br/>
-DEF NAME:<input type=text size=10 id=dname><br/>
+DEF NAME:<input type=text size=10 id=dname>
 CODE:
-<textarea cols=80 rows=4 id=dcode></textarea><button id=def>DEF</button><br/>
+<textarea cols=40 rows=2 id=dcode></textarea><button id=def>DEF</button><br/>
 </div>
 <div id=msg style="height:3rem;">
 </div>
 <div style="display:flex">
-	<div id=stack>
-		<textarea id=st cols=40 rows=30>stack</textarea>
+	<div id=stack>stack<br/>
+		<textarea id=st cols=40 rows=30>empty</textarea>
 	</div>
+	<div>word list<br/>
+		<textarea id=keys cols=60 rows=30>keys</textarea></div>
 </div>
 </body>
 </html>

@@ -37,29 +37,32 @@ class vStack {
 		if(this.stack.length==0)throw new RuntimeException("stack underflow") 
 		return this.stack.pop() 
 	}
-	dup() {
-		if(this.stack.length==0) throw new RuntimeException("stack underflow")
-		const v =  this.stack[this.stack.length-1]
+	pick(n) {
+		if(this.stack.length-n<=0) throw new RuntimeException("stack underflow")
+		const v = this.stack[this.stack.length-1-n]
 		this.push(v.value,v.type)
 	}
+	roll(n) {
+		if(this.stack.length-n<=0) throw new RuntimeException("stack underflow") 
+		const t =  this.stack[this.stack.length-1-n] 
+		for(let i =n;i>0;i--) {
+			this.stack[this.stack.length-1-i] = this.stack[this.stack.length-i]
+		}
+		this.stack[this.stack.length-1] = t 
+	}
+	dup() {
+		this.pick(0)
+	}
 	swap() {
-		if(this.stack.length<2) throw new RuntimeException("stack underflow") 
-		const t =  this.stack[this.stack.length-1] 
-		this.stack[this.stack.length-1] = this.stack[this.stack.length-2]
-		this.stack[this.stack.length-2] = t   
+		this.roll(1)  
 	}
 	over() {
-		if(this.stack.length<2) throw new RuntimeException("stack underflow") 
-		const v = this.stack[this.stack.length-2]
-		this.push(v.value,v.type) 
+		this.pick(1)
 	}
 	rot() {
-		if(this.stack.length<3) throw new RuntimeException("stack underflow") 
-		const t =  this.stack[this.stack.length-3] 
-		this.stack[this.stack.length-3] = this.stack[this.stack.length-2]
-		this.stack[this.stack.length-2] = this.stack[this.stack.length-1]
-		this.stack[this.stack.length-1] = t  
+		this.roll(2)
 	}
+
 	dumpstack() {
 		return (this.stack.slice(0)) 
 	}
@@ -141,24 +144,35 @@ get(name) {
 	if(this.dict[name]) return this.dict[name]
 	else return null 
 }
-adddict(name,v) {
+adddict(name,v,desc=null) {
 	for(let i=0;i<this.reserve.length;i++) if(this.reserve[i]==name) return false 
+	let d
 	if(Array.isArray(v)) {
-		this.dict[name] = {name:name,c:v} 
+		d = {name:name,c:v} 
 	} else if(typeof v == "function") {
-		this.dict[name] = {name:name,f:v}
+		d = {name:name,f:v}
 	}
+	if(desc!=null) d.desc = desc 
+	this.dict[name] = d 
 	return true
 }
-alias(alias,name) {
-	if(!this.dict[name]) return false 
-	this.dict[alias] = this.dict[name]
+alias(alias,name,desc=null) {
+	if(!this.dict[name]) return false
+	const t = this.dict[name] 
+	const d = {name:alias,oname:t.name}
+	if(t.c) d.c = t.c 
+	if(t.f) d.f = t.f 
+	if(desc!=null) d.desc = desc  
+	this.dict[alias] = d
+}
+keys() {
+	return Object.keys(this.dict)
 }
 setreserve() {
 //system
 	this.adddict("$num",(ds,n)=>{
 		ds.push(n) 
-	})
+	},"( -- n) set numeric")
 	this.adddict("$vec",(ds,n)=>{
 		ds.push(n,"v")
 	})
@@ -197,12 +211,15 @@ setreserve() {
 // main class 
 class vForth {
 constructor() {
-	this.dict = new vDictionary()
-	setDict(this.dict)
+	this.dictionary = new vDictionary()
+	setDict(this.dictionary)
 	this.variables = {}
 }
 adddict(name,op) {
-	this.dict.adddict(name,op)
+	this.dictionary.adddict(name,op)
+}
+getdictlist() {
+	return this.dictionary.keys()
 }
 setVal(name,type,value) {
 	this.variables[name] = {type:type,value:value}	
@@ -222,20 +239,20 @@ compile(code) {
 		let op = code[i]
 		//numeric 
 		if((typeof op === 'number') && (isFinite(op)) ) {
-			ret.push({op:this.dict.get("$num"),p:op,src:op})
+			ret.push({op:this.dictionary.get("$num"),p:op,src:op})
 			continue 
 		}
 		if(op.toString().match(/^'(.*)'$/)) {
-			ret.push({op:this.dict.get("$string"),p:RegExp.$1,src:op})
+			ret.push({op:this.dictionary.get("$string"),p:RegExp.$1,src:op})
 			continue 			
 		}
 		if(Array.isArray(op)) {
-			if(Array.isArray(op[0])) ret.push({op:this.dict["$mat"],p:op,src:op})
-			else ret.push({op:this.dict.get("$vec"),p:op,src:op})
+			if(Array.isArray(op[0])) ret.push({op:this.dictionary["$mat"],p:op,src:op})
+			else ret.push({op:this.dictionary.get("$vec"),p:op,src:op})
 			continue 
 		}
 		if(op===true || op===false) {
-			ret.push({op:this.dict.get("$bool"),p:op,src:op})
+			ret.push({op:this.dictionary.get("$bool"),p:op,src:op})
 			continue 			
 		}
 		//control
@@ -244,39 +261,39 @@ compile(code) {
 			case "IF":
 				o=1 
 				while(code[i+o]!="ELSE" && code[i+o]!="ENDIF") o++ 
-				ret.push({op:this.dict.get("$fbr"),p:o,src:op})
+				ret.push({op:this.dictionary.get("$fbr"),p:o,src:op})
 				continue 
 				break 
 			case "ELSE":
 				o=1
 				while(code[i+o]!="ENDIF") o++
-				ret.push({op:this.dict.get("$br"),p:o,src:op}) 
+				ret.push({op:this.dictionary.get("$br"),p:o,src:op}) 
 				continue 
 				break 
 			case "ENDIF":
-				ret.push({op:this.dict.get("NOP"),src:op})
+				ret.push({op:this.dictionary.get("NOP"),src:op})
 				continue 
 				break 
 			case "LOOP":
-				ret.push({op:this.dict.get("NOP"),src:op})
+				ret.push({op:this.dictionary.get("NOP"),src:op})
 				continue ;
 				break 
 			case "ENDLOOP":
 				o=1 
 				while(code[i-o]!="LOOP") o++ 
-				ret.push({op:this.dict.get("$br"),p:-o,src:op})
+				ret.push({op:this.dictionary.get("$br"),p:-o,src:op})
 				continue 
 				break  
 			case "EXITIF":
 				o=1 
 				while(code[i+o]!="ENDLOOP") o++ 
-				ret.push({op:this.dict.get("$tbr"),p:o+1,src:op})
+				ret.push({op:this.dictionary.get("$tbr"),p:o+1,src:op})
 				continue 
 				break 			
 		}
 		//operation
 		let d 
-		if(d = this.dict.get(op)) {
+		if(d = this.dictionary.get(op)) {
 			ret.push({op:d,src:op})
 			continue 
 		} else {
