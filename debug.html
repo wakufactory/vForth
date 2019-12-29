@@ -9,6 +9,7 @@
 import * as VF from "./vForth.js" 
 onload =function() {
 	const v = new VF.vForth()
+	console.log(v.dictionary.dict)
 	const dict = v.dictionary.dict
 	document.getElementById("keys").innerHTML = Object.keys(dict).reduce((a,v)=>{
 		if(v.substr(0,1)!="$")
@@ -29,9 +30,10 @@ onload =function() {
 				console.log(run.call(c))
 			}catch (e) {
 				console.log(e)
-				document.getElementById("msg").innerHTML = e.msg 
+				document.getElementById("msg").innerHTML = e.msg + "(" +e.op+")" 
 				return 
 			}
+			getlocal(run.localv)
 			document.getElementById("msg").innerHTML = "" 
 			dumpstack(run.dumpstack())
 			ev.target.value=""
@@ -45,12 +47,19 @@ onload =function() {
 		if(c = v.compile(code)) {
 			v.adddict(name,c) 
 			document.getElementById("msg").innerHTML = "define "+name 
-			document.getElementById("keys").innerHTML = v.getdictlist().join(" ")
 
 		}  else {
 			document.getElementById("msg").innerHTML = v.emsg
 		}	
 	})
+	function getlocal(lv) {
+		console.log(Object.keys(lv))
+		document.getElementById("lv").innerHTML =
+			Object.keys(lv).reduce((a,v)=>{
+				a.push( `${v} : ${lv[v].value}`)
+				return a
+			},[]).join("\n")
+	}
 }
 
 function dumpstack(s) {
@@ -98,7 +107,10 @@ CODE:
 </div>
 <div style="display:flex">
 	<div id=stack>stack<br/>
-		<textarea id=st cols=40 rows=30>empty</textarea>
+		<textarea id=st cols=20 rows=30>empty</textarea>
+	</div>
+	<div id=stack>local val<br/>
+		<textarea id=lv cols=20 rows=30>empty</textarea>
 	</div>
 	<div>word list<br/>
 		<textarea id=keys cols=60 rows=30>keys</textarea></div>

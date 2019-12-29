@@ -73,6 +73,7 @@ class vStack {
 class vRun {
 constructor() {
 	this.dstack = new vStack()	
+	this.localv = {}
 }
 run(code) {
 	this.emsg = "" 
@@ -83,8 +84,14 @@ run(code) {
 //		console.log("op:"+op.op.name)
 		//native code
 		if(op.op.f) {
-			ret = op.op.f(this.dstack,op.p)
-
+			try {
+				ret = op.op.f(this,op.p)
+			} catch(e) {
+				e.op = op.op.name
+				e.pc = pc 
+				throw e 
+				return 
+			}
 			if(ret!=undefined) pc += ret  
 			if(pc<0 || pc >code.length) {
 				throw new RuntimeException("jump over")
@@ -124,6 +131,13 @@ dumpstack() {
 }
 clearstack(){
 	this.dstack.clear()
+}
+setlocal(name,v) {
+	this.localv[name] = v 
+}
+getlocal(name) {
+	if(this.localv[name]==undefined) return null
+	return this.localv[name]
 }
 } // class vRun
 class RuntimeException {
@@ -170,39 +184,53 @@ keys() {
 }
 setreserve() {
 //system
-	this.adddict("$num",(ds,n)=>{
-		ds.push(n) 
+	this.adddict("$num",(rt,n)=>{
+		rt.dstack.push(n) 
 	},"( -- n) set numeric")
-	this.adddict("$vec",(ds,n)=>{
-		ds.push(n,"v")
+	this.adddict("$vec",(rt,n)=>{
+		rt.dstack.push(n,"v")
 	})
-	this.adddict("$mat",(ds,n)=>{
-		ds.push(n,"m")
+	this.adddict("$mat",(rt,n)=>{
+		rt.dstack.push(n,"m")
 	})
-	this.adddict("$bool",(ds,n)=>{
-		ds.push(n,"b")
+	this.adddict("$bool",(rt,n)=>{
+		rt.dstack.push(n,"b")
 	})
-	this.adddict("$string",(ds,n)=>{
-		ds.push(n,"s")
+	this.adddict("$string",(rt,n)=>{
+		rt.dstack.push(n,"s")
 	})			
-	this.adddict("$fbr",(ds,ofs)=>{
+	this.adddict("$fbr",(rt,ofs)=>{
 		let ret = 0 
-		const a1 = ds.pop()
+		const a1 = rt.dstack.pop()
 		if(!a1.value) ret = ofs 
 		return ret 
 	})
-	this.adddict("$tbr",(ds,ofs)=>{
+	this.adddict("$tbr",(rt,ofs)=>{
 		let ret = 0 
-		const a1 = ds.pop()
+		const a1 = rt.dstack.pop()
 		if(a1.value) ret = ofs
 		return ret  
 	})
-	this.adddict("$br",(ds,ofs)=>{
+	this.adddict("$br",(rt,ofs)=>{
 		return ofs 
 	})
-	this.adddict("NOP",(ds)=>{
-		
+	this.adddict("NOP",(rt)=>{
+	
 	})
+	this.adddict("!",(rt)=>{
+		const n = rt.dstack.pop()
+		const v = rt.dstack.pop()
+		if(n.type!="a") 	new RuntimeException("type dont match")
+		rt.setlocal(n.value,v)
+	},"( a s -- ) store to local val")
+	this.adddict("@",(rt)=>{
+		const n = rt.dstack.pop()
+		if(n.type!="a") 	new RuntimeException("type dont match")
+		const v = rt.getlocal(n.value) 
+		if(v==null) throw	new RuntimeException("no local val")
+		rt.dstack.push( v.value,v.type )
+	},"( s -- a ) restore from local val")
+
 	this.reserve = Object.keys(this.dict)
 }
 }// class vDictionary
