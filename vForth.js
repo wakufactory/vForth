@@ -35,7 +35,14 @@ class vStack {
 	}
 	pop() {
 		if(this.stack.length==0)throw new RuntimeException("stack underflow") 
-		return this.stack.pop() 
+		return this.stack.pop()
+	}
+	tuck() {
+		if(this.stack.length<3)throw new RuntimeException("stack underflow") 
+		this.stack.push(this.top())
+		const t = this.stack[this.stack.length-2]
+		this.stack[this.stack.length-2] = this.stack[this.stack.length-3]
+		this.stack[this.stack.length-3] = t
 	}
 	pick(n) {
 		if(this.stack.length-n<=0) throw new RuntimeException("stack underflow")
@@ -74,6 +81,7 @@ class vRun {
 constructor() {
 	this.dstack = new vStack()	
 	this.localv = {}
+	this.outfunc = null 
 }
 run(code) {
 	this.emsg = "" 
@@ -112,6 +120,10 @@ run(code) {
 call(code,...args) {
 	args.forEach((v)=>this.pushstack(v))
 	return this.run(code)
+}
+out(v) {
+	if(this.outfunc) this.outfunc(v)
+	else console.log(v)
 }
 getstack(n=0) {
 	const s = this.dstack.get(n)
@@ -202,12 +214,14 @@ setreserve() {
 	this.adddict("$fbr",(rt,ofs)=>{
 		let ret = 0 
 		const a1 = rt.dstack.pop()
+		if(a1.type!="b") 	new RuntimeException("type dont match")
 		if(!a1.value) ret = ofs 
 		return ret 
 	})
 	this.adddict("$tbr",(rt,ofs)=>{
 		let ret = 0 
 		const a1 = rt.dstack.pop()
+		if(a1.type!="b") 	new RuntimeException("type dont match")
 		if(a1.value) ret = ofs
 		return ret  
 	})
@@ -256,9 +270,6 @@ getVal(name) {
 	if(this.variables[name]) return this.variables 
 	else return null 
 }
-out(data) {
-	console.log(data.value) 
-}
 compile(code) {
 	this.emsg = "" 
 	if(typeof code == "string") code = this.parseStr(code)
@@ -288,34 +299,40 @@ compile(code) {
 		switch(op) {
 			case "IF":
 				o=1 
-				while(code[i+o]!="ELSE" && code[i+o]!="ENDIF") o++ 
+				while(code[i+o]!="ELSE" && code[i+o]!="THEN") o++ 
 				ret.push({op:this.dictionary.get("$fbr"),p:o,src:op})
 				continue 
 				break 
 			case "ELSE":
 				o=1
-				while(code[i+o]!="ENDIF") o++
+				while(code[i+o]!="THEN") o++
 				ret.push({op:this.dictionary.get("$br"),p:o,src:op}) 
 				continue 
 				break 
-			case "ENDIF":
+			case "THEN":
 				ret.push({op:this.dictionary.get("NOP"),src:op})
 				continue 
 				break 
-			case "LOOP":
+			case "BEGIN":
 				ret.push({op:this.dictionary.get("NOP"),src:op})
 				continue ;
 				break 
-			case "ENDLOOP":
+			case "UNTIL":
 				o=1 
-				while(code[i-o]!="LOOP") o++ 
+				while(code[i-o]!="BEGIN" && i-o>=0) o++ 
+				ret.push({op:this.dictionary.get("$fbr"),p:-o,src:op})
+				continue 
+				break 
+			case "REPEAT":
+				o=1 
+				while(code[i-o]!="BEGIN" && i-o>=0) o++ 
 				ret.push({op:this.dictionary.get("$br"),p:-o,src:op})
 				continue 
 				break  
-			case "EXITIF":
+			case "WHILE":
 				o=1 
-				while(code[i+o]!="ENDLOOP") o++ 
-				ret.push({op:this.dictionary.get("$tbr"),p:o+1,src:op})
+				while(code[i+o]!="REPEAT" && i+o<code.length) o++ 
+				ret.push({op:this.dictionary.get("$fbr"),p:o,src:op})
 				continue 
 				break 			
 		}
