@@ -26,6 +26,9 @@ function setDict(vf) {
 	vf.adddict("ROT",(rt)=>{
 		rt.dstack.rot()
 	},"( a b c -- b c a ) rotation")
+	vf.adddict("TUCK",(rt)=>{
+		rt.dstack.tuck()
+	},"( a b c -- a c b c) tuck in")
 	vf.adddict("PICK",(rt)=>{
 		const n = rt.dstack.pop() 
 		rt.dstack.pick(n.value)
@@ -35,10 +38,10 @@ function setDict(vf) {
 		rt.dstack.roll(n.value)
 	},"( a b c n -- b c a) roll over n-th stack ")
 	vf.adddict(".",(rt)=>{
-		vf.out(rt.dstack.pop())
+		rt.out(rt.dstack.pop())
 	})
 	vf.adddict(".S",(rt)=>{
-		vf.out(rt.dstack.top())
+		rt.out(rt.dstack.top())
 	})	
 
 //alithmetic		
