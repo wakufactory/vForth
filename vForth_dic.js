@@ -563,7 +563,7 @@ function setDict(vf) {
 	vf.adddict("UVEC2Y",(rt)=>rt.dstack.push([0,1],"v"),"( -- v2 ) create 2dim unit vector Y")
 	vf.adddict("UVEC3X",(rt)=>rt.dstack.push([1,0,0],"v"),"( -- v3 ) create 3dim unit vector X")
 	vf.adddict("UVEC3Y",(rt)=>rt.dstack.push([0,1,0],"v"),"( -- v3 ) create 3dim unit vector Y")
-	vf.adddict("UVEC3Z",(rt)=>rt.dstack.push([0,0,0,1],"v"),"( -- v3 ) create 3dim unit vector Z")
+	vf.adddict("UVEC3Z",(rt)=>rt.dstack.push([0,0,1],"v"),"( -- v3 ) create 3dim unit vector Z")
 	vf.adddict("UVEC4W",(rt)=>rt.dstack.push([0,0,0,1],"v"),"( -- v4 ) create 4dim unit vector W")
 	vf.adddict("ZVEC2",(rt)=>rt.dstack.push([0,0],"v"),"( -- v ) create zero vector")
 	vf.adddict("ZVEC3",(rt)=>rt.dstack.push([0,0,0],"v"))

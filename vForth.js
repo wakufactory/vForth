@@ -82,6 +82,7 @@ constructor() {
 	this.dstack = new vStack()	
 	this.localv = {}
 	this.outfunc = null 
+	this.runfunc = null 
 }
 run(code) {
 	this.emsg = "" 
@@ -90,6 +91,7 @@ run(code) {
 		let op = code[pc] 
 		if(op.op==null||op.op==undefined) throw new RuntimeException("no op") 
 //		console.log("op:"+op.op.name)
+		if(this.runfunc) this.runfunc(op)
 		//native code
 		if(op.op.f) {
 			try {
@@ -144,8 +146,8 @@ dumpstack() {
 clearstack(){
 	this.dstack.clear()
 }
-setlocal(name,v) {
-	this.localv[name] = v 
+setlocal(name,v,type="n") {
+	this.localv[name] = {value:v,type:type} 
 }
 getlocal(name) {
 	if(this.localv[name]==undefined) return null
@@ -235,7 +237,7 @@ setreserve() {
 		const n = rt.dstack.pop()
 		const v = rt.dstack.pop()
 		if(n.type!="a") 	new RuntimeException("type dont match")
-		rt.setlocal(n.value,v)
+		rt.setlocal(n.value,v.value,v.type)
 	},"( a s -- ) store to local val")
 	this.adddict("@",(rt)=>{
 		const n = rt.dstack.pop()

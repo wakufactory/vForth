@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width">
-<title></title>
+<title>vForth sandbox</title>
 <script type="text/javascript" src=""></script>
 <script type="module">
 import * as VF from "./vForth.js" 
@@ -18,7 +18,14 @@ onload =function() {
 	},[]).join("\n")
 	
 	const run = v.newRuntime()
-
+	run.outfunc = (v) =>{
+		document.getElementById("out").innerHTML = v.value + "\n" + document.getElementById("out").innerHTML
+	}
+	run.runfunc = (op) => {
+		let s = op.op.name
+		if(op.p!==undefined) s += "("+op.p+")"
+		document.getElementById("op").innerHTML = s +"\n" + document.getElementById("op").innerHTML		
+	}
 	const cs = [] 
 	let c 
 	document.getElementById("cl").addEventListener("change", (ev)=>{
@@ -26,17 +33,15 @@ onload =function() {
 
 		if( c = v.compile(ev.target.value ) ) {
 			console.log(c) 
+			document.getElementById("msg").innerHTML = "" 
 			try {
 				console.log(run.call(c))
 			}catch (e) {
 				console.log(e)
 				document.getElementById("msg").innerHTML = e.msg + "(" +e.op+")" 
-				return 
 			}
 			getlocal(run.localv)
-			document.getElementById("msg").innerHTML = "" 
 			dumpstack(run.dumpstack())
-			ev.target.value=""
 		}else {
 			document.getElementById("msg").innerHTML = v.emsg
 		}
@@ -47,13 +52,12 @@ onload =function() {
 		if(c = v.compile(code)) {
 			v.adddict(name,c) 
 			document.getElementById("msg").innerHTML = "define "+name 
-
+			console.log(c)
 		}  else {
 			document.getElementById("msg").innerHTML = v.emsg
 		}	
 	})
 	function getlocal(lv) {
-		console.log(Object.keys(lv))
 		document.getElementById("lv").innerHTML =
 			Object.keys(lv).reduce((a,v)=>{
 				a.push( `${v} : ${lv[v].value}`)
@@ -98,22 +102,28 @@ textarea,input {
 </head>
 <body>
 <div>
-CODE: <input type=text size=100 id=cl><br/>
-DEF NAME:<input type=text size=10 id=dname>
+CODE: <input type=text size=100 id=cl placeholder="input space separated word. ex. '1 1 +' "><br/>
+DEFINE NAME:<input type=text size=10 id=dname>
 CODE:
-<textarea cols=40 rows=2 id=dcode></textarea><button id=def>DEF</button><br/>
+<textarea cols=40 rows=2 id=dcode></textarea><button id=def>DEFINE</button><br/>
 </div>
 <div id=msg style="height:3rem;">
 </div>
 <div style="display:flex">
+	<div id=stack>op<br/>
+		<textarea id=op cols=10 rows=30></textarea>
+	</div>
 	<div id=stack>stack<br/>
-		<textarea id=st cols=20 rows=30>empty</textarea>
+		<textarea id=st cols=13 rows=30>empty</textarea>
+	</div>
+	<div id=stack>output<br/>
+		<textarea id=out cols=13 rows=30></textarea>
 	</div>
 	<div id=stack>local val<br/>
 		<textarea id=lv cols=20 rows=30>empty</textarea>
 	</div>
 	<div>word list<br/>
-		<textarea id=keys cols=60 rows=30>keys</textarea></div>
+		<textarea id=keys cols=40 rows=30>keys</textarea></div>
 </div>
 </body>
 </html>
